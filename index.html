@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Code Vault</title>
+<style>
+:root{--bg:#f6f7f9;--panel:#fff;--text:#1c2330;--muted:#6b7585;--border:#e1e5ec;--accent:#4f6ef7;--code-bg:#0f1420;--code-text:#d7e0f5;--danger:#d64545}
+:root[data-theme="dark"]{--bg:#0e121a;--panel:#161b26;--text:#e6eaf2;--muted:#8a94a8;--border:#252c3b;--code-bg:#0a0d14}
+*{box-sizing:border-box}
+body{margin:0;font:14px/1.5 system-ui,Segoe UI,sans-serif;background:var(--bg);color:var(--text);height:100vh;display:flex}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:1px solid var(--border);background:var(--panel);border-radius:8px;padding:6px 12px}
+button:hover{border-color:var(--accent)}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+button.danger:hover{border-color:var(--danger);color:var(--danger)}
+button.ghost{border:none;background:none;padding:4px 8px;color:var(--muted)}
+input,select,textarea{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 10px;width:100%}
+input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:-1px}
+aside{width:260px;background:var(--panel);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:16px;gap:12px;overflow:auto}
+.brand{font-size:18px;font-weight:700;display:flex;align-items:center;gap:8px;cursor:text}
+.sec{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;cursor:pointer}
+.sec:hover{background:var(--bg)}
+.sec.active{background:var(--bg);box-shadow:inset 3px 0 var(--c,var(--accent));font-weight:600}
+.sec .count{margin-left:auto;color:var(--muted);font-size:12px}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--c,var(--accent));flex:none}
+main{flex:1;display:flex;flex-direction:column;min-width:0}
+header{display:flex;gap:10px;align-items:center;padding:14px 20px;border-bottom:1px solid var(--border);background:var(--panel);flex-wrap:wrap}
+header h2{margin:0;font-size:18px}
+header .grow{flex:1}
+header input[type=search]{max-width:260px}
+#list{padding:20px;overflow:auto;display:grid;gap:16px;grid-template-columns:repeat(auto-fill,minmax(420px,1fr));align-content:start}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:12px;overflow:hidden;display:flex;flex-direction:column}
+.card h3{margin:0;font-size:15px}
+.card .top{padding:12px 14px;display:flex;gap:8px;align-items:center}
+.card .desc{padding:0 14px 10px;color:var(--muted)}
+.badge{font-size:11px;padding:2px 8px;border-radius:99px;background:var(--bg);border:1px solid var(--border);color:var(--muted)}
+pre{margin:0;background:var(--code-bg);color:var(--code-text);padding:14px;overflow:auto;max-height:280px;font:12.5px/1.5 Consolas,Menlo,monospace;tab-size:2}
+.empty{grid-column:1/-1;text-align:center;color:var(--muted);padding:60px 20px}
+dialog{border:1px solid var(--border);border-radius:14px;background:var(--panel);color:var(--text);width:min(680px,94vw);padding:20px}
+dialog::backdrop{background:#0008}
+dialog h3{margin-top:0}
+.row{display:grid;gap:10px;margin-bottom:12px}
+.row.two{grid-template-columns:1fr 1fr}
+label{font-size:12px;color:var(--muted);display:block;margin-bottom:3px}
+textarea.code{min-height:240px;font:12.5px/1.5 Consolas,Menlo,monospace;white-space:pre;tab-size:2}
+.actions{display:flex;gap:8px;justify-content:flex-end;margin-top:8px}
+.tags{display:flex;gap:6px;padding:0 14px 10px;flex-wrap:wrap}
+.spacer{flex:1}
+.media{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;padding:0 14px 12px}
+.media img,.media video{width:100%;height:110px;object-fit:cover;border-radius:8px;background:var(--bg);cursor:zoom-in;display:block}
+.media video{cursor:default}
+.mlist{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.mlist .badge{display:flex;gap:6px;align-items:center}
+.mlist button{padding:0 4px;border:none;background:none;color:var(--danger)}
+@media(max-width:760px){body{flex-direction:column;height:auto}aside{width:auto;border-right:0;border-bottom:1px solid var(--border)}#list{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<aside>
+  <div class="brand" id="brand" title="Click to rename the site"></div>
+  <button class="primary" id="addSec">+ New section</button>
+  <div id="secs"></div>
+  <div class="spacer"></div>
+  <button id="settings">⚙ Customize site</button>
+  <button id="export">Export backup</button>
+  <button id="import">Import backup</button>
+  <input type="file" id="file" accept=".json" hidden>
+</aside>
+<main>
+  <header>
+    <h2 id="secTitle"></h2>
+    <button class="ghost" id="editSec">Edit section</button>
+    <span class="grow"></span>
+    <input type="search" id="q" placeholder="Search all snippets…">
+    <button class="primary" id="addSnip">+ New snippet</button>
+  </header>
+  <div id="list"></div>
+</main>
+
+<dialog id="dSec"><form method="dialog" id="fSec">
+  <h3 id="dSecT">Section</h3>
+  <div class="row"><div><label>Name</label><input name="name" required></div></div>
+  <div class="row two">
+    <div><label>Icon (emoji)</label><input name="icon" maxlength="4" placeholder="📁"></div>
+    <div><label>Color</label><input name="color" type="color"></div>
+  </div>
+  <div class="actions"><button type="button" class="danger" id="delSec">Delete</button><span class="spacer"></span><button type="button" data-close>Cancel</button><button class="primary">Save</button></div>
+</form></dialog>
+
+<dialog id="dSnip"><form method="dialog" id="fSnip">
+  <h3 id="dSnipT">Snippet</h3>
+  <div class="row two">
+    <div><label>Title</label><input name="title" required></div>
+    <div><label>Section</label><select name="section"></select></div>
+  </div>
+  <div class="row two">
+    <div><label>Language</label><input name="lang" list="langs" placeholder="powershell, python, sql…"></div>
+    <div><label>Tags (comma separated)</label><input name="tags"></div>
+  </div>
+  <datalist id="langs"><option>powershell<option>python<option>javascript<option>typescript<option>sql<option>bash<option>html<option>css<option>json<option>yaml<option>csharp<option>java<option>text</datalist>
+  <div class="row"><div><label>Description</label><input name="desc"></div></div>
+  <div class="row"><div><label>Code</label><textarea class="code" name="code" spellcheck="false"></textarea></div></div>
+  <div class="row"><div><label>Images &amp; videos</label><input type="file" id="mediaIn" accept="image/*,video/*" multiple><div id="mediaList" class="mlist"></div></div></div>
+  <div class="actions"><button type="button" class="danger" id="delSnip">Delete</button><span class="spacer"></span><button type="button" data-close>Cancel</button><button class="primary">Save</button></div>
+</form></dialog>
+
+<dialog id="dSet"><form method="dialog" id="fSet">
+  <h3>Customize site</h3>
+  <div class="row"><div><label>Site name</label><input name="name"></div></div>
+  <div class="row two">
+    <div><label>Accent color</label><input name="accent" type="color"></div>
+    <div><label>Theme</label><select name="theme"><option value="light">Light</option><option value="dark">Dark</option></select></div>
+  </div>
+  <div class="row"><div><label>Card layout</label><select name="cols"><option value="420">Wide cards</option><option value="320">Medium cards</option><option value="1000">Single column</option></select></div></div>
+  <div class="actions"><button type="button" class="danger" id="reset">Reset everything</button><span class="spacer"></span><button type="button" data-close>Cancel</button><button class="primary">Save</button></div>
+</form></dialog>
+
+<script>
+const KEY='codevault.v1';
+const uid=()=>Math.random().toString(36).slice(2,10);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'<','>':'>','"':'&quot;'}[c]));
+const $=id=>document.getElementById(id);
+
+function seed(){
+  const a=uid(),b=uid(),c=uid();
+  return {settings:{name:'Code Vault',accent:'#4f6ef7',theme:'light',cols:'420'},
+    sections:[{id:a,name:'PowerShell',icon:'🟦',color:'#3b82f6'},{id:b,name:'SQL',icon:'🗄️',color:'#10b981'},{id:c,name:'Web',icon:'🌐',color:'#f59e0b'}],
+    snippets:[{id:uid(),section:a,title:'List large files',lang:'powershell',tags:['files'],desc:'Find the 20 biggest files under the current folder.',code:'Get-ChildItem -Recurse -File | Sort-Object Length -Descending | Select-Object -First 20 FullName,Length'}],
+    active:a};
+}
+let S;
+try{S=JSON.parse(localStorage.getItem(KEY))}catch{}
+if(!S||!S.sections)S=seed();
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch{alert('Could not save to browser storage.')}};
+let editingSec=null,editingSnip=null,query='';
+
+// media storage (IndexedDB, so large videos fit)
+const dbp=new Promise((res,rej)=>{const r=indexedDB.open('codevault-media',1);r.onupgradeneeded=()=>r.result.createObjectStore('m');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)});
+const idb=(mode,fn)=>dbp.then(db=>new Promise((res,rej)=>{const t=db.transaction('m',mode);const q=fn(t.objectStore('m'));t.oncomplete=()=>res(q&&q.result);t.onerror=()=>rej(t.error)}));
+const putMedia=(id,b)=>idb('readwrite',s=>s.put(b,id));
+const getMedia=id=>idb('readonly',s=>s.get(id));
+const delMedia=id=>idb('readwrite',s=>s.delete(id)).catch(()=>{});
+const blobToData=b=>new Promise(r=>{const f=new FileReader();f.onload=()=>r(f.result);f.readAsDataURL(b)});
+let urls=[],curMedia=[],addedIds=[],snipSaved=false;
+
+function applySettings(){
+  const s=S.settings;
+  document.documentElement.dataset.theme=s.theme;
+  document.documentElement.style.setProperty('--accent',s.accent);
+  $('brand').textContent='📦 '+s.name;
+  document.title=s.name;
+  $('list').style.gridTemplateColumns=`repeat(auto-fill,minmax(min(${s.cols}px,100%),1fr))`;
+}
+function render(){
+  applySettings();
+  if(!S.sections.find(x=>x.id===S.active))S.active=S.sections[0]?.id;
+  $('secs').innerHTML=S.sections.map(x=>`<div class="sec ${x.id===S.active&&!query?'active':''}" data-id="${x.id}" style="--c:${x.color}"><span class="dot"></span>${esc(x.icon||'')} ${esc(x.name)}<span class="count">${S.snippets.filter(n=>n.section===x.id).length}</span></div>`).join('')||'<div class="badge">No sections yet</div>';
+  const sec=S.sections.find(x=>x.id===S.active);
+  $('secTitle').textContent=query?`Search: “${query}”`:(sec?`${sec.icon||''} ${sec.name}`:'Create a section to begin');
+  $('editSec').style.display=query||!sec?'none':'';
+  $('addSnip').disabled=!sec;
+  let items=S.snippets;
+  if(query){const q=query.toLowerCase();items=items.filter(n=>[n.title,n.desc,n.code,n.lang,(n.tags||[]).join(' ')].join(' ').toLowerCase().includes(q))}
+  else items=items.filter(n=>n.section===S.active);
+  $('list').innerHTML=items.length?items.map(n=>{const s=S.sections.find(x=>x.id===n.section);return `<div class="card" data-id="${n.id}">
+    <div class="top"><h3>${esc(n.title)}</h3>${n.lang?`<span class="badge">${esc(n.lang)}</span>`:''}${query&&s?`<span class="badge">${esc(s.name)}</span>`:''}<span class="spacer"></span><button class="ghost" data-act="copy">Copy</button><button class="ghost" data-act="edit">Edit</button></div>
+    ${n.desc?`<div class="desc">${esc(n.desc)}</div>`:''}
+    ${(n.tags||[]).length?`<div class="tags">${n.tags.map(t=>`<span class="badge">#${esc(t)}</span>`).join('')}</div>`:''}
+    ${(n.media||[]).length?`<div class="media">${n.media.map(m=>m.type.startsWith('video')?`<video controls preload="metadata" data-mid="${m.id}" title="${esc(m.name)}"></video>`:`<img alt="${esc(m.name)}" data-mid="${m.id}" title="${esc(m.name)}">`).join('')}</div>`:''}
+    ${n.code?`<pre>${esc(n.code)}</pre>`:''}</div>`}).join(''):`<div class="empty">${query?'No matches.':sec?'No snippets here yet. Click “+ New snippet”.':'Click “+ New section” to get started.'}</div>`;
+  save();
+  urls.forEach(u=>URL.revokeObjectURL(u));urls=[];
+  document.querySelectorAll('[data-mid]').forEach(async el=>{
+    const b=await getMedia(el.dataset.mid).catch(()=>null);
+    if(b){const u=URL.createObjectURL(b);urls.push(u);el.src=u}
+  });
+}
+
+// sections
+$('secs').onclick=e=>{const d=e.target.closest('.sec');if(d){S.active=d.dataset.id;query='';$('q').value='';render()}};
+function openSec(sec){
+  editingSec=sec||null;const f=$('fSec');
+  $('dSecT').textContent=sec?'Edit section':'New section';
+  f.name.value=sec?.name||'';f.icon.value=sec?.icon||'';f.color.value=sec?.color||'#4f6ef7';
+  $('delSec').style.display=sec?'':'none';$('dSec').showModal();
+}
+$('addSec').onclick=()=>openSec();
+$('editSec').onclick=()=>openSec(S.sections.find(x=>x.id===S.active));
+$('fSec').onsubmit=()=>{
+  const f=$('fSec'),v={name:f.name.value.trim(),icon:f.icon.value.trim(),color:f.color.value};
+  if(editingSec)Object.assign(editingSec,v);else{const n={id:uid(),...v};S.sections.push(n);S.active=n.id}
+  render();
+};
+$('delSec').onclick=()=>{
+  const n=S.snippets.filter(x=>x.section===editingSec.id).length;
+  if(!confirm(`Delete “${editingSec.name}”${n?` and its ${n} snippet(s)`:''}?`))return;
+  S.snippets.filter(x=>x.section===editingSec.id).forEach(x=>(x.media||[]).forEach(m=>delMedia(m.id)));
+  S.sections=S.sections.filter(x=>x!==editingSec);S.snippets=S.snippets.filter(x=>x.section!==editingSec.id);
+  $('dSec').close();render();
+};
+
+// snippets
+function openSnip(n){
+  editingSnip=n||null;const f=$('fSnip');
+  f.section.innerHTML=S.sections.map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join('');
+  $('dSnipT').textContent=n?'Edit snippet':'New snippet';
+  f.title.value=n?.title||'';f.section.value=n?.section||S.active;f.lang.value=n?.lang||'';
+  f.tags.value=(n?.tags||[]).join(', ');f.desc.value=n?.desc||'';f.code.value=n?.code||'';
+  curMedia=[...(n?.media||[])];addedIds=[];snipSaved=false;drawMedia();
+  $('delSnip').style.display=n?'':'none';$('dSnip').showModal();f.title.focus();
+}
+function drawMedia(){
+  $('mediaList').innerHTML=curMedia.map(m=>`<span class="badge">${m.type.startsWith('video')?'🎬':'🖼️'} ${esc(m.name)}<button type="button" data-rm="${m.id}" title="Remove">✕</button></span>`).join('');
+}
+$('mediaIn').onchange=async e=>{
+  for(const f of e.target.files){
+    const id=uid()+uid();
+    try{await putMedia(id,f);curMedia.push({id,name:f.name,type:f.type||'image/*'});addedIds.push(id)}
+    catch{alert('Could not store '+f.name+' (browser storage full?)')}
+  }
+  e.target.value='';drawMedia();
+};
+$('mediaList').onclick=e=>{const b=e.target.closest('[data-rm]');if(b){curMedia=curMedia.filter(m=>m.id!==b.dataset.rm);drawMedia()}};
+$('dSnip').addEventListener('close',()=>{if(!snipSaved)addedIds.forEach(delMedia);addedIds=[]});
+$('addSnip').onclick=()=>openSnip();
+$('fSnip').onsubmit=()=>{
+  const f=$('fSnip'),v={title:f.title.value.trim(),section:f.section.value,lang:f.lang.value.trim(),desc:f.desc.value.trim(),code:f.code.value,tags:f.tags.value.split(',').map(t=>t.trim()).filter(Boolean)};
+  v.media=curMedia;
+  (editingSnip?.media||[]).filter(m=>!curMedia.some(c=>c.id===m.id)).forEach(m=>delMedia(m.id));
+  snipSaved=true;
+  if(editingSnip)Object.assign(editingSnip,v);else S.snippets.unshift({id:uid(),...v});
+  render();
+};
+$('delSnip').onclick=()=>{if(confirm('Delete this snippet?')){(editingSnip.media||[]).forEach(m=>delMedia(m.id));S.snippets=S.snippets.filter(x=>x!==editingSnip);$('dSnip').close();render()}};
+$('list').addEventListener('click',e=>{const i=e.target.closest('img[data-mid]');if(i&&i.src)window.open(i.src,'_blank')});
+$('list').onclick=async e=>{
+  const b=e.target.closest('button[data-act]');if(!b)return;
+  const n=S.snippets.find(x=>x.id===b.closest('.card').dataset.id);
+  if(b.dataset.act==='edit')openSnip(n);
+  else{if(!n.code)return;try{await navigator.clipboard.writeText(n.code)}catch{const t=document.createElement('textarea');t.value=n.code;document.body.append(t);t.select();document.execCommand('copy');t.remove()}
+    b.textContent='Copied!';setTimeout(()=>b.textContent='Copy',1200)}
+};
+$('q').oninput=e=>{query=e.target.value.trim();render()};
+
+// site settings
+$('brand').onclick=$('settings').onclick=()=>{
+  const f=$('fSet'),s=S.settings;f.name.value=s.name;f.accent.value=s.accent;f.theme.value=s.theme;f.cols.value=s.cols;$('dSet').showModal();
+};
+$('fSet').onsubmit=()=>{const f=$('fSet');Object.assign(S.settings,{name:f.name.value.trim()||'Code Vault',accent:f.accent.value,theme:f.theme.value,cols:f.cols.value});render()};
+$('reset').onclick=()=>{if(confirm('Erase ALL sections and snippets?')){S=seed();$('dSet').close();render()}};
+
+// backup
+$('export').onclick=async()=>{
+  const files={};
+  for(const n of S.snippets)for(const m of n.media||[]){const b=await getMedia(m.id).catch(()=>null);if(b)files[m.id]=await blobToData(b)}
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify({...S,files},null,2)],{type:'application/json'}));a.download='code-vault-backup.json';a.click()};
+$('import').onclick=()=>$('file').click();
+$('file').onchange=async e=>{
+  try{const d=JSON.parse(await e.target.files[0].text());if(!d.sections||!d.snippets)throw 0;
+    if(confirm('Replace current data with this backup?')){
+      for(const n of S.snippets)for(const m of n.media||[])await delMedia(m.id);
+      for(const [id,url] of Object.entries(d.files||{}))await putMedia(id,await (await fetch(url)).blob());
+      delete d.files;S=d;render()}}catch{alert('Not a valid backup file.')}
+  e.target.value='';
+};
+
+document.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>b.closest('dialog').close());
+render();
+</script>
+</body>
+</html>
